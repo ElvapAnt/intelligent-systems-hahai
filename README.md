@@ -1,1 +1,2 @@
-# intelligent-systems-hahai
+# HandHeldAI - HAHAI
+Intelligent systems project
