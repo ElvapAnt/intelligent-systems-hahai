@@ -17,10 +17,10 @@ export default function Navbar() {
             paddingBottom: '10px', 
         }}>
             <NavLink to="/" style={linkStyle}>Home</NavLink>
-            <NavLink to="/intern" style={linkStyle}>Intern</NavLink>
+            <NavLink to="/intern" style={linkStyle}>Internista</NavLink>
             <NavLink to="/admin" style={linkStyle}>Admin</NavLink>
-            <NavLink to="/analysis" style={linkStyle}>Analysis</NavLink>
-            <NavLink to="/history" style={linkStyle}>History</NavLink>
+            <NavLink to="/analysis" style={linkStyle}>Analiza</NavLink>
+            <NavLink to="/history" style={linkStyle}>Istorija</NavLink>
         </nav>
     );
 }
