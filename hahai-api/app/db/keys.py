@@ -15,3 +15,6 @@ def record_xray_key(case_id: str) -> str:
 
 def record_gradcam_key(case_id: str) -> str:
     return f"record:{case_id}:gradcam"
+
+def intern_session_key(token: str) -> str:
+    return f"session:intern:{token}"

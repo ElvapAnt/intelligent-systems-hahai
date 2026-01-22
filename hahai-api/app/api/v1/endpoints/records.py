@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, s
 from fastapi.responses import Response
 from redis.asyncio.client import Redis
 
-from app.api.dependencies import get_redis, get_redis_bin, require_admin
+from app.api.dependencies import get_redis, get_redis_bin, require_admin, require_intern
 from app.schemas.patient_record import PatientRecordOut
 from app.services.storage import records as record_store
 from app.services.storage import images as image_store
@@ -33,7 +33,7 @@ def _record_to_out(record: dict) -> PatientRecordOut:
     status_code=status.HTTP_201_CREATED,
 )
 async def create_record(
-    student_id: str = Form(...),
+    student_id: str = Depends(require_intern),
     notes: str = Form(""),
     xray: UploadFile = File(...),
 
@@ -95,6 +95,7 @@ async def list_all_records(redis: Redis = Depends(get_redis)):
 @router.get(
     "/intern/{student_id}",
     response_model=list[PatientRecordOut],
+    dependencies=[Depends(require_admin)]
 )
 async def list_records_for_intern(student_id: str, redis: Redis = Depends(get_redis)):
     try:
@@ -103,10 +104,21 @@ async def list_records_for_intern(student_id: str, redis: Redis = Depends(get_re
     except record_store.InternNotFoundForRecordError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
+@router.get(
+    "/me", 
+    response_model=list[PatientRecordOut]
+)
+async def list_my_intern_records(
+    student_id: str = Depends(require_intern),
+    redis: Redis = Depends(get_redis),
+):
+    records = await record_store.list_records_for_intern(redis, student_id=student_id)
+    return [_record_to_out(r) for r in records]
+
 
 @router.get(
     "/{case_id}",
-    response_model=PatientRecordOut,
+    response_model=PatientRecordOut
 )
 async def get_record(case_id: str, redis: Redis = Depends(get_redis)):
     try:

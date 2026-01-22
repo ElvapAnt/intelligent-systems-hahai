@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from app.api.v1.router import router as v1_router
 from app.config import settings
 from app.db.redis import create_redis_text, create_redis_binary
+from app.services.ml.model import load_keras_model
 
 
 @asynccontextmanager
@@ -12,6 +13,8 @@ async def lifespan(app: FastAPI):
     # Startup
     app.state.redis = await create_redis_text(settings.REDIS_URL) # metadata
     app.state.redis_bin = await create_redis_binary(settings.REDIS_URL) # images
+
+    app.state.model = load_keras_model(settings.MODEL_PATH)
 
     yield
 

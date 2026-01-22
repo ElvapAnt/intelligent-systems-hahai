@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.v1.endpoints import admin, interns, records
+from app.api.v1.endpoints import admin, interns, records, auth
 
 router = APIRouter()
 
@@ -13,3 +13,4 @@ async def ping():
 router.include_router(interns.router, prefix="/interns", tags=["interns"])
 router.include_router(records.router, prefix="/records", tags=["records"])
 router.include_router(admin.router, prefix="/admin", tags=["admin"])
+router.include_router(auth.router, prefix="/auth", tags=["auth"])
