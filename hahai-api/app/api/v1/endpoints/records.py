@@ -7,12 +7,12 @@ from fastapi.responses import Response
 from redis.asyncio.client import Redis
 
 from app.api.dependencies import get_redis, get_redis_bin, require_admin, require_intern
-from app.schemas.patient_record import PatientRecordOut
+from app.schemas.patient_record import PatientRecordOut, PatientRecordSaveIn
 from app.services.storage import records as record_store
 from app.services.storage import images as image_store
+from app.services.storage.records import promote_temp_record, TempRecordNotFoundError, TempRecordOwnershipError, TempRecordInvalidError
 
 router = APIRouter()
-
 
 def _record_to_out(record: dict) -> PatientRecordOut:
     case_id = record["case_id"]
@@ -28,11 +28,11 @@ def _record_to_out(record: dict) -> PatientRecordOut:
 
 
 @router.post(
-    "",
+    "/test",
     response_model=PatientRecordOut,
     status_code=status.HTTP_201_CREATED,
 )
-async def create_record(
+async def create_record_test(
     student_id: str = Depends(require_intern),
     notes: str = Form(""),
     xray: UploadFile = File(...),
@@ -80,6 +80,34 @@ async def create_record(
 
     except record_store.InternNotFoundForRecordError as e:
         raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.post("", response_model=PatientRecordOut, status_code=status.HTTP_201_CREATED)
+async def create_record(
+    payload: PatientRecordSaveIn, 
+    student_id: str = Depends(require_intern),
+    redis: Redis = Depends(get_redis),
+    redis_bin: Redis = Depends(get_redis_bin),
+):
+    """
+    SAVE: promote temp record to permanent case_id record.
+    """
+    try:
+        case_id = await promote_temp_record(
+            redis, redis_bin,
+            temp_id=payload.temp_id,
+            student_id=student_id,
+            notes=payload.notes,
+        )
+        record = await record_store.get_record(redis, case_id=case_id)
+        return _record_to_out(record)
+
+    except TempRecordNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except TempRecordOwnershipError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except TempRecordInvalidError as e:
+        raise HTTPException(status_code=409, detail=str(e))
 
 
 @router.get(

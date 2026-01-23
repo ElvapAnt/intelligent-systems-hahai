@@ -1,5 +1,10 @@
+import secrets
+
 ALL_INTERNS_KEY = "interns"
 ALL_RECORDS_KEY = "records"
+
+def make_temp_id() -> str:
+    return "temp-" + secrets.token_hex(16)
 
 def intern_key(student_id: str) -> str:
     return f"intern:{student_id}"
