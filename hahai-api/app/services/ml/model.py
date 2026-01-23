@@ -1,6 +1,10 @@
 import tensorflow as tf
 import numpy as np
 
+@tf.keras.utils.register_keras_serializable(package="preproc") # type:ignore
+def effb4_preprocess(x):
+    return tf.keras.applications.efficientnet.preprocess_input(x) #type:ignore 
+
 
 def load_keras_model(model_path: str) -> tf.keras.Model: # type:ignore
     # compile=False is fine for inference and avoids needing optimizer/loss
@@ -13,7 +17,7 @@ def predict_binary(model: tf.keras.Model, batch_x: np.ndarray) -> tuple[str, flo
     Returns: (pred_label, pred_accuracy_0_100, p_positive)
     Assumes sigmoid output in [0,1], shape (N,1) or (N,)
     """
-    y = model.predict(batch_x, verbose=0)
+    y = model.predict(batch_x, verbose=1)
 
     # normalize output to scalar p
     p = float(y[0][0] if hasattr(y[0], "__len__") else y[0])

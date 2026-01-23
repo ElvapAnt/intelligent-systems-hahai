@@ -18,6 +18,9 @@ class PatientRecordOut(BaseModel):
     xray_url: str
     gradcam_url: str
 
+class PatientRecordSaveIn(BaseModel):
+    temp_id: str
+    notes: str = ""
 
 
 # And your endpoint can build:

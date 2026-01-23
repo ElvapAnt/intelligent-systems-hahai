@@ -14,7 +14,7 @@ async def lifespan(app: FastAPI):
     app.state.redis = await create_redis_text(settings.REDIS_URL) # metadata
     app.state.redis_bin = await create_redis_binary(settings.REDIS_URL) # images
 
-    # app.state.model = load_keras_model(settings.MODEL_PATH)
+    app.state.model = load_keras_model(settings.MODEL_PATH)
 
     yield
 

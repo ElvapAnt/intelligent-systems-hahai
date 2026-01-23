@@ -15,7 +15,7 @@ class Settings(BaseSettings):
 
     SESSION_TTL_SECONDS: int = 12 * 60 * 60  # 12 hours
 
-    MODEL_PATH: str = "model.h5"
+    MODEL_PATH: str = "effnet_model\model.keras" #type:ignore
     IMAGE_SIZE: int = 512
     ENCODER_LAST_CONV_LAYER: str = "top_activation"
     GRADCAM_ALPHA: float = 0.4
