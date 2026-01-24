@@ -1,20 +1,24 @@
 import { NavLink, useNavigate } from "react-router-dom";
-import { clearInternToken, getInternToken } from "../helpers/auth";
+import { clearInternToken, isAnyoneLoggedIn, setAdminLoggedIn } from "../helpers/auth";
 
 export default function Navbar() {
     const navigate = useNavigate();
-    const token = getInternToken();
+    const loggedIn = isAnyoneLoggedIn();
 
-    const linkStyle = (isActive) => ({
+    const linkStyle = ({isActive}) => ({
         marginRight: '15px',
         color: 'white',
-        fontWeight: isActive? "700" : "400",
+        fontWeight: isActive? "700" : "600",
         fontSize: isActive? "larger" : "large",
         width: '100%',
+        padding: '4px',
+        border: isActive ? '1px solid white' : 'none',
+        borderRadius: '10px',
     });
 
     function handleLogout() {
         clearInternToken();
+        setAdminLoggedIn(false);
         navigate('/');
     }
 
@@ -31,15 +35,15 @@ export default function Navbar() {
             paddingRight: "16px",
         }}>
             <div>
-                <NavLink to="/" style={linkStyle}>Home</NavLink>
+                <NavLink to="/" end style={linkStyle}>Home</NavLink>
                 <NavLink to="/analysis" style={linkStyle}>Analiza</NavLink>
                 <NavLink to="/history" style={linkStyle}>Istorija</NavLink>
                 <NavLink to="/admin" style={linkStyle}>Admin</NavLink>
             </div>
-            {token && (
+            {loggedIn && (
             <button 
             onClick={handleLogout}
-            disabled={!token}
+            disabled={!loggedIn}
             style={{
                 background: "white",
                 color: "rgb(34 34 84)",

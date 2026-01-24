@@ -14,12 +14,11 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import testResult from "../assets/images/positive_as_positive_100_hand-patient09787_image1.jpg";
 import { getInternToken } from "../helpers/auth";
+import bckg from "../assets/images/x-ray-bckg.jpg";
 
 export default function Analysis() {
     const navigate = useNavigate();
-    // const { index } = useParams();
 
     const [selectedFile, setSelectedFile] = useState(null);           
     const [uploadedPreviewUrl, setUploadedPreviewUrl] = useState(""); 
@@ -33,6 +32,28 @@ export default function Analysis() {
 
     const [notes, setNotes] = useState("");                           
     const [leaveOpen, setLeaveOpen] = useState(false);
+    const [tempId, setTempId] = useState(null);
+    const [processedGradcamUrl, setProcessedGradcamUrl] = useState("");
+
+    const API_BASE = "http://localhost:8000";
+
+    async function fetchImageObjectUrl(url, token) {
+        const resp = await fetch(url, {
+            headers: { "X-Intern-Token": token },
+        });
+        if (!resp.ok) {
+            const t = await resp.text();
+            throw new Error(t || `Failed to load image: ${resp.status}`);
+        }
+        const blob = await resp.blob();
+        return URL.createObjectURL(blob);
+    }
+
+    useEffect(() => {
+        return () => {
+            if (resultImageUrl?.startsWith("blob:")) URL.revokeObjectURL(resultImageUrl);
+        };
+    }, [resultImageUrl]);
 
     useEffect(() => {
         return () => {
@@ -65,56 +86,85 @@ export default function Analysis() {
         });
 
         e.target.value = null;
+        setTempId(null);
+        setProcessedGradcamUrl("");
     };
 
-    async function handleProcess() {
-    // TODO: setIsProcessing(true), call backend, setResultImageUrl, setResultInfo, finally setIsProcessing(false)
-        
-        setIsProcessing(true);
-
-        //
-        setResultImageUrl(testResult);
-        setResultInfo({
-            pred_label: "positive",
-            pred_accuracy: "78.5"
-        });
-
-        setIsProcessing(false);
-
+    async function cancelTempIfExists(token) {
+    if (!tempId) return;
+        try {
+            await fetch(`${API_BASE}/api/v1/process/${tempId}`, {
+            method: "DELETE",
+            headers: { "X-Intern-Token": token },
+            });
+        } catch {
+            // ignore cleanup errors
+        } finally {
+            setTempId(null);
+        }
     }
 
-    async function urlToFile(url, filename = "gradcam.png") {
-        const res = await fetch(url);              
-        const blob = await res.blob();             
-        return new File([blob], filename, { type: blob.type || "image/png" });
+    async function handleProcess() {
+        try {
+            const token = getInternToken();
+            if (!token) throw new Error("Niste prijavljeni kao internista.");
+            if (!selectedFile) return;
+
+            setIsProcessing(true);
+
+            const fd = new FormData();
+            fd.append("xray", selectedFile, selectedFile.name || "xray.jpg");
+
+            const resp = await fetch(`${API_BASE}/api/v1/process`, {
+            method: "POST",
+            headers: { "X-Intern-Token": token },
+            body: fd,
+            });
+
+            if (!resp.ok) {
+            const msg = await resp.text();
+            throw new Error(msg || `Processing failed: ${resp.status}`);
+            }
+
+            const data = await resp.json();
+            setTempId(data.temp_id);
+            setResultInfo({
+            pred_label: data.pred_label,
+            pred_accuracy: String(data.pred_accuracy),
+            });
+
+            const fullGradcam = `${API_BASE}${data.gradcam_url}`;
+            setProcessedGradcamUrl(fullGradcam);
+
+            const gradcamObjUrl = await fetchImageObjectUrl(fullGradcam, token);
+
+            if (resultImageUrl?.startsWith("blob:")) URL.revokeObjectURL(resultImageUrl);
+            setResultImageUrl(gradcamObjUrl);
+        } catch (err) {
+            console.error("Process failed:", err);
+        } finally {
+            setIsProcessing(false);
+        }
     }
 
     async function handleSave() {
         try {
             const token = getInternToken();
-            if (!token) {
-                throw new Error("Niste prijavljeni kao internista.");
-            }
-
+            if (!token) throw new Error("Niste prijavljeni kao internista.");
             if (!selectedFile) return;
-            if (!resultImageUrl) return;
+            if (!processedGradcamUrl) throw new Error("Nema obrađene slike (gradcam) za čuvanje.");
 
-            const gradcamFile = await urlToFile(resultImageUrl, "gradcam.png");
-
-            const fd = new FormData();
-            fd.append("notes", notes ?? "");
-            fd.append("pred_label", resultInfo?.pred_label ?? "negative");
-            fd.append("pred_accuracy", String(resultInfo?.pred_accuracy ?? 50.0));
-
-            fd.append("xray", selectedFile, selectedFile.name || "xray.png");
-            fd.append("gradcam", gradcamFile, gradcamFile.name);
-
-            const resp = await fetch("http://localhost:8000/api/v1/records", {
+            const fd = {
+                temp_id: tempId || "",
+                notes: notes ?? ""
+            }
+            const resp = await fetch(`${API_BASE}/api/v1/records`, {
             method: "POST",
-            headers: {
+            headers: { 
                 "X-Intern-Token": token,
+                "Content-Type": "application/json"
             },
-            body: fd,
+            body: JSON.stringify(fd),
             });
 
             if (!resp.ok) {
@@ -122,11 +172,13 @@ export default function Analysis() {
             throw new Error(errText || `Save failed: ${resp.status}`);
             }
 
-            navigate('/history');
+            await cancelTempIfExists(token);
+
+            navigate("/history");
         } catch (err) {
             console.error("Save failed:", err);
         }
-    }            
+    }        
 
     const handleOpenLeave = () => {
         setLeaveOpen(true);
@@ -136,18 +188,30 @@ export default function Analysis() {
         setLeaveOpen(false);
     };
 
-    const handleConfirmLeave = () => {
-        setLeaveOpen(false);
-        
-        //navigate 
+    const handleConfirmLeave = async () => {
+        try {
+            const token = getInternToken();
+            if (token) await cancelTempIfExists(token);
+        } finally {
+            setLeaveOpen(false);
+            navigate("/");
+        }
     };
 
     return (
-        <div className="page-container">
-            <Container maxWidth="lg" style={{height: "100%",
+        <div className="page-container" style={{
+                backgroundImage: `url(${bckg})`,
+                position: "relative",
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+                overflowY: "auto",
+                color: "white",
+              }}>
+            <Container maxWidth="lg" style={{
                 display: "flex",
                 flexDirection: "column",
-                justifyContent: "center",}}>
+                justifyContent: "center",
+                marginTop: "8px",}}>
                 <Stack spacing={3}>
                 <Stack spacing={2}>
                     <Typography variant="h6" fontWeight={800}>
@@ -156,13 +220,13 @@ export default function Analysis() {
 
                     <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems="stretch">                       
                     <Paper sx={{ p: 2, flex: 1, display:"flex", justifyContent: "center" }}>
-                    <Stack spacing={2} width="50%">
+                    <Stack spacing={2} width="100%">
                         <Typography fontWeight={700}>Original</Typography>
 
                         <Paper variant="outlined">
                         <Box
                             sx={{
-                            height: 300,
+                            height: { xs: 320, sm: 420, md: 520 },
                             borderRadius: 2,
                             border: "1px dashed rgba(255,255,255,0.22)",
                             display: "flex",
@@ -208,13 +272,13 @@ export default function Analysis() {
                     </Paper>
                     
                     <Paper sx={{ p: 2, flex: 1, display:"flex", justifyContent: "center" }}>
-                    <Stack spacing={2} width="50%">
+                    <Stack spacing={2} width="100%">
                         <Typography fontWeight={700}>Rezultat</Typography>
 
                         <Paper variant="outlined">
                         <Box
                             sx={{
-                            height: 300,
+                            height: { xs: 320, sm: 420, md: 520 },
                             borderRadius: 2,
                             border: "1px dashed rgba(255,255,255,0.22)",
                             display: "flex",
@@ -250,7 +314,7 @@ export default function Analysis() {
 
                         {resultInfo.pred_accuracy ? (
                             <Typography variant="body2" sx={{ opacity: 0.7 }}>                            
-                            {"Predikcija: " + resultInfo.pred_label + " sa sigurnošću od " + resultInfo.pred_accuracy + "%"}
+                            {"Predikcija: " + resultInfo.pred_label + " sa sigurnošću od " + Number(resultInfo.pred_accuracy).toFixed(2) + "%"}
                             </Typography>
                         ) : (
                             <Typography variant="body2" sx={{ opacity: 0.7 }}>
@@ -262,7 +326,11 @@ export default function Analysis() {
                     </Stack>
                 
                 </Stack>
-                <Stack spacing={2} marginTop={0}>
+                <Stack spacing={2} marginTop={0} paddingBottom={"16px"} sx={{
+                    backgroundColor: "white",
+                    color: "black",
+                    padding: 1,
+                    }}>
                     <Typography variant="h6" fontWeight={800}>
                     Beleške
                     </Typography>
@@ -277,7 +345,7 @@ export default function Analysis() {
                     />
 
                     <Stack direction="row" spacing={2} justifyContent="flex-end">
-                        <Button variant="outlined" onClick={handleOpenLeave}>
+                        <Button variant="outlined" disabled={!selectedFile && !notes} onClick={handleOpenLeave}>
                             Napusti
                         </Button>
 

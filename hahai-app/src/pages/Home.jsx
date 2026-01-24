@@ -1,4 +1,5 @@
-import bckg from "../assets/images/home-bckg.png";
+// import bckg from "../assets/images/home-bckg.png";
+import bckg from "../assets/images/x-ray-bckg.jpg";
 import { useMemo, useState } from "react";
 import {
   Box,
@@ -12,12 +13,12 @@ import {
   Typography,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
-import { getInternToken, setInternToken } from "../helpers/auth";
+import { isAnyoneLoggedIn, setAdminLoggedIn, setInternToken } from "../helpers/auth";
 
 export default function Home() {
     const navigate = useNavigate();
-    const token = getInternToken();
-        
+    const loggedIn = isAnyoneLoggedIn();
+
     const [mode, setMode] = useState("index"); 
     const [fieldValue, setFieldValue] = useState({
         indexNumber: "",
@@ -61,9 +62,15 @@ export default function Home() {
 
             return;
         }
+        else if (mode === "rfzo") {
+            if (fieldValue.rfzo.trim() !== window.env.RFZO_ADMIN) {
+                setErrorMessage("Neispravan RFZO za admina.");
+                return;
+            }
 
-        navigate( mode === "index" ? `/analysis?index=${encodeURIComponent(fieldValue.indexNumber.trim())}`
-                                 : `/admin?rfzo=${encodeURIComponent(fieldValue.rfzo.trim())}` );
+            setAdminLoggedIn(true);
+            navigate('/admin');
+        }        
     };
 
     return (
@@ -76,69 +83,74 @@ export default function Home() {
             <div >
                 <h1>HAHAI</h1>
 
-                <Container maxWidth="sm" sx={{ py: 5, borderRadius: 3, }}>  {/*backgroundColor: "rgb(59 47 75 / 87%)",*/}
-                <Paper elevation={3} sx={{ p: 4, borderRadius: 3, }}>
-                    <Stack spacing={3}>
-                    <Typography variant="h5" fontWeight={700}> {/* sx={{ color: "white"}}> */}
-                        Prijavite se
-                    </Typography>
+                {loggedIn ? (
+                    <Typography variant="h6">
+                        Platforma za učenje i detekciju oboljenja šake upotrebom veštačke inteligencije.
+                    </Typography>) : (
+                    <Container maxWidth="sm" sx={{ py: 5, borderRadius: 3, }}>  
+                    <Paper elevation={3} sx={{ p: 4, borderRadius: 3, }}>
+                        <Stack spacing={3}>
+                        <Typography variant="h5" fontWeight={700}>
+                            Prijavite se
+                        </Typography>
 
-                    <ToggleButtonGroup
-                        value={mode}
-                        exclusive
-                        onChange={handleModeChange}
-                        fullWidth
-                        aria-label="nacin-unosa"
-                    >
-                        <ToggleButton value="index" aria-label="internista">
-                        Internista
-                        </ToggleButton>
-                        <ToggleButton value="rfzo" aria-label="specijalista">
-                        Specijalista
-                        </ToggleButton>
-                    </ToggleButtonGroup>
-
-                    <Box component="form" onSubmit={handleContinue}>
-                        <Stack spacing={2}>
-                        
-                        {mode === "index" ? (
-                        <TextField
-                            label="Broj indeksa"
-                            value={fieldValue.indexNumber}
-                            onChange={(e) => setFieldValue(prev => ({...prev, indexNumber: e.target.value}))}
-                            disabled={mode !== "index"}
+                        <ToggleButtonGroup
+                            value={mode}
+                            exclusive
+                            onChange={handleModeChange}
                             fullWidth
-                            autoComplete="index"
-                        />
-                        ) : null}
-
-                        {mode === "rfzo" ? (
-                        <TextField
-                            label="RFZO"
-                            value={fieldValue.rfzo}
-                            onChange={(e) => setFieldValue(prev => ({...prev, rfzo: e.target.value}))}
-                            disabled={mode !== "rfzo"}
-                            fullWidth
-                        />
-                        ) : null}
-
-                        {errorMessage && (
-                            <Typography color="error">{errorMessage}</Typography>
-                        )}
-
-                        <Button
-                            type="submit"
-                            variant="contained"
-                            size="large"
-                            disabled={!isValid}
+                            aria-label="nacin-unosa"
                         >
-                            Nastavi
-                        </Button>
+                            <ToggleButton value="index" aria-label="internista">
+                            Internista
+                            </ToggleButton>
+                            <ToggleButton value="rfzo" aria-label="specijalista">
+                            Specijalista
+                            </ToggleButton>
+                        </ToggleButtonGroup>
+
+                        <Box component="form" onSubmit={handleContinue}>
+                            <Stack spacing={2}>
+                            
+                            {mode === "index" ? (
+                            <TextField
+                                label="Broj indeksa"
+                                value={fieldValue.indexNumber}
+                                onChange={(e) => setFieldValue(prev => ({...prev, indexNumber: e.target.value}))}
+                                disabled={mode !== "index"}
+                                fullWidth
+                                autoComplete="index"
+                            />
+                            ) : null}
+
+                            {mode === "rfzo" ? (
+                            <TextField
+                                label="RFZO"
+                                value={fieldValue.rfzo}
+                                onChange={(e) => setFieldValue(prev => ({...prev, rfzo: e.target.value}))}
+                                disabled={mode !== "rfzo"}
+                                fullWidth
+                            />
+                            ) : null}
+
+                            {errorMessage && (
+                                <Typography color="error">{errorMessage}</Typography>
+                            )}
+
+                            <Button
+                                type="submit"
+                                variant="contained"
+                                size="large"
+                                disabled={!isValid}
+                            >
+                                Nastavi
+                            </Button>
+                            </Stack>
+                        </Box>
                         </Stack>
-                    </Box>
-                    </Stack>
-                </Paper>
-                </Container>
+                    </Paper>
+                    </Container>
+                    )}
             </div>
         </div>
     );

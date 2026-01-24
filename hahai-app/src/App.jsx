@@ -6,7 +6,8 @@ import Admin from './pages/Admin';
 import Analysis from './pages/Analysis';
 import History from './pages/History';
 import NotFound from './pages/NotFound';
-import RequireIntern from './pages/RequireIntern';
+import RequireAuth from './components/RequireAuth';
+import RequireAdmin from './components/RequireAdmin';
 
 function App() {
 
@@ -17,9 +18,9 @@ function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           //dodati ogranicenja za rute
-          <Route path="/admin"  element={<Admin />} />
-          <Route path="/analysis" element={<RequireIntern><Analysis /></RequireIntern>} /> 
-          <Route path="/history" element={<History />} />
+          <Route path="/analysis" element={<RequireAuth><Analysis /></RequireAuth>} /> 
+          <Route path="/history" element={<RequireAuth><History /></RequireAuth>} />
+          <Route path="/admin"  element={<RequireAdmin><Admin /></RequireAdmin>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
 

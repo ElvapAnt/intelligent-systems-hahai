@@ -17,15 +17,19 @@
   box-sizing: border-box;
 }
 
-html, body {
+html, body, #root {
   height: 100%;
   margin: 0;
-  overflow: hidden; 
 }
 
 #root {
   height: 100%;
   width: 100%;
+}
+
+body {
+  overflow-y: auto;   /* ✅ scrolling allowed */
+  overflow-x: hidden;
 }
 
 a {
